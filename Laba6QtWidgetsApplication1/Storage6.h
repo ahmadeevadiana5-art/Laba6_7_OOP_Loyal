@@ -1,7 +1,9 @@
 #ifndef STORAGE6_H
 #define STORAGE6_H
+
+
 #include "BaseShape6.h"
-#include "ArrowObserver.h"
+#include "ArrowShape.h"
 #include "group.h"
 #include<QPoint>
 #include <QColor>
@@ -24,8 +26,9 @@ private:
 	int max_capacity; //максимальное количество фигу, которые можно хранить
 
 	//вектор для хранения стрелок 
-	std::vector<std::shared_ptr<ArrowObserver>> arrows;
+	//std::vector<std::shared_ptr<ArrowObserver>> arrows;
 
+	
 public:
 
 	//конструктор с начальной емкостью
@@ -82,25 +85,37 @@ public:
 
 
 	//========ЛР7 
-	void addArrow(std::shared_ptr<ArrowObserver> arrow);
-	void removeArrow(std::shared_ptr<ArrowObserver> arrow);
-	std::shared_ptr<ArrowObserver> createArrow(std::shared_ptr<BaseShape> source, std::shared_ptr<BaseShape> target);
-	const std::vector<std::shared_ptr<ArrowObserver>>& getArrows() const;
+	//void addArrow(std::shared_ptr<ArrowObserver> arrow);
+	//void removeArrow(std::shared_ptr<ArrowObserver> arrow);
+	//std::shared_ptr<ArrowObserver> createArrow(std::shared_ptr<BaseShape> source, std::shared_ptr<BaseShape> target);
+	//const std::vector<std::shared_ptr<ArrowObserver>>& getArrows() const;
 
 	//методы для работы с выделением 
+	std::shared_ptr<ArrowShape> createArrow(std::shared_ptr<BaseShape> source,
+		std::shared_ptr<BaseShape> target);
+
+	std::vector<std::shared_ptr<ArrowShape>> getArrows() const;
+
+	void restoreArrowConnections();
+	
 	void clearSelection();
 	void selectShape(std::shared_ptr<BaseShape> shape);
 	void deselectShape(std::shared_ptr<BaseShape> shape);
 
-	void notifyTreeUpdate() { emit treeUpdateNeeded(); }
-	void notifySelectionChanged() { emit selectionChanged(); }
+
+	void notifyChanges()
+	{
+		emit treeUpdateNeeded();
+		emit selectionChanged();
+	}
 
 
 signals: 
 	void treeUpdateNeeded();      // Сигнал для обновления дерева
 	void selectionChanged();
 private:
-	void notifyChanges();
+	int findObjectIndex(std::shared_ptr<BaseShape> shape) const;
+	
 };
 
 

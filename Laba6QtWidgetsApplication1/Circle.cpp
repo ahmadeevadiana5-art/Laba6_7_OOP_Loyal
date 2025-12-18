@@ -61,14 +61,18 @@ void Circle::resize(int newWidth, int newHeight)
 //ЛР 6 Сохранение круга в файл 
 void Circle::save(QTextStream& out) const
 {
+    BaseShape::save(out);
+    out << " " << radius << "\n";
+    /*
     out << "Circle "
         << position1.x() << " "
         << position1.y() << " "
         << radius << " "
         << fillColor.name() << " "
         << Colorborder.name() << " "
-        << (selected ? "1" : "0") << "\n";
+        << (selected ? "1" : "0") << "\n";*/
 }
+
 
 
 
@@ -76,6 +80,10 @@ void Circle::save(QTextStream& out) const
 
 void Circle::load(QTextStream& in)
 {
+    BaseShape::load(in);
+    in >> radius;
+
+    /*
     QString type;
     int x, y, r;
     QString fillName, borderName;
@@ -91,7 +99,7 @@ void Circle::load(QTextStream& in)
     fillColor = QColor(fillName);
     Colorborder = QColor(borderName);
     selected = (selectedFlag == 1);
-
+    */
     //in.readLine();
 
 }
@@ -128,3 +136,4 @@ void Circle::setCenter(const QPoint& center) {
     QPoint offset = center - position1;
     move(offset.x(), offset.y());
 }
+ 

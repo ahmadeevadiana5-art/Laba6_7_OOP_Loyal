@@ -7,7 +7,7 @@
 #include "Line6.h"
 #include "Group.h"
 #include<QDebug>
-
+#include"ArrowShape.h"
 
 
 std::shared_ptr<BaseShape> ShapeFactory::createShape(const QString& shapeType)
@@ -41,7 +41,14 @@ std::shared_ptr<BaseShape> ShapeFactory::createShape(const QString& shapeType)
 	{
 		return std::make_shared<Group>();
 	}
-	return nullptr;
+	else if (shapeType == "Arrow")
+	{
+		return std::make_shared<ArrowShape>();
+	}
+	else
+		return nullptr;
+
+	
 
 }
 

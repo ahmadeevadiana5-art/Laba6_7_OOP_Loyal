@@ -36,7 +36,7 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent),        // Вызов конструктора родительского класса
     m_storage(100),             // Инициализация хранилища на 100 фигур
     m_toolButtonGroup(nullptr), m_treeWidget(nullptr), // Инициализация указателя нулем
-    m_isCreatingArrow(false),
+    m_isCreatingArrow(false), m_paintArea(nullptr),
     m_arrowSource(nullptr)
 {
 
@@ -378,6 +378,7 @@ void MainWindow::onChangeColor()
 }
 
 //================ ЛР 6 ============
+//реализация группировки черех паттерн Composite
 void MainWindow::onGroupClicked()
 {
     //количество выделенных фигур 
@@ -442,6 +443,7 @@ void MainWindow::onUngroupClicked()
 }
 
 // Сохранение проекта в файл
+//factory method паттерн
 void MainWindow::onSaveClicked()
 {
     // Проверяем, есть ли что сохранять
@@ -549,20 +551,33 @@ void MainWindow::onClearAllClicked()
     }
 }
 
+//ЛР7 
+//добавление в дерево
 
 void MainWindow::addShapeToTree(std::shared_ptr<BaseShape> shape, QTreeWidgetItem* parent)
 {
-    if (!shape) return;
+    if (!shape) return; //проверка на группу
 
     // Создаем элемент для фигуры
     QTreeWidgetItem* item = new QTreeWidgetItem(parent);
-    // Формируем текст: "Тип (цвет)"
-    QString itemText = QString("%1 (#%2)")
-        .arg(shape->getType())
-        .arg(shape->getfillColor().rgb() & 0xFFFFFF, 6, 16, QChar('0'));
 
-    //item->setText(0, shape->getType());
-    item->setText(0, itemText);
+    QString itemText;
+    if (shape->getType() == "Arrow")
+    {
+        item->setText(0, "Стрелка");
+
+    }
+    else
+    {
+
+        // Формируем текст: "Тип (цвет)"
+        QString itemText = QString("%1 (#%2)")
+            .arg(shape->getType())
+            .arg(shape->getfillColor().rgb() & 0xFFFFFF, 6, 16, QChar('0'));
+
+        //item->setText(0, shape->getType());
+        item->setText(0, itemText);
+    }
 
     // Сохраняем указатель на фигуру в данных элемента
     QVariant variant = QVariant::fromValue(static_cast<void*>(shape.get()));
@@ -586,7 +601,7 @@ void MainWindow::addShapeToTree(std::shared_ptr<BaseShape> shape, QTreeWidgetIte
     }
 }
 
-
+//ЛР7 Observer для TreeView обновление
 void MainWindow::updateTreeView()
 {
     if (!m_treeWidget) return;
@@ -608,7 +623,7 @@ void MainWindow::updateTreeView()
     }
 }
 
-
+//обработка клика
 void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
 {
     Q_UNUSED(column);
@@ -629,7 +644,7 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
         s->setSelected(false);
     }
 
-    // Выделяем выбранную фигуру
+    // Выделяем выбранную фигуру, при клике выделяется фигура в рабочей области
     shape->setSelected(true);
 
     // Обновляем рабочую область
@@ -642,11 +657,27 @@ void MainWindow::createArrow(std::shared_ptr<BaseShape> source, std::shared_ptr<
         QMessageBox::warning(this, "Ошибка", "Невозможно создать стрелку");
         return;
     }
+    auto arrow = std::make_shared<ArrowShape>(source, target);
 
-    // Просто создаем стрелку
-    auto arrow = m_storage.createArrow(source, target);
-    if (arrow) {
-        m_paintArea->update();  // Перерисовываем
-        QMessageBox::information(this, "Успех", "Стрелка создана");
+    auto shapes = m_storage.getShapes();
+    int sourceIndex = -1, targetIndex = -1;
+
+    for (int i = 0; i < shapes.size(); i++) {
+        if (shapes[i].get() == source.get()) sourceIndex = i;
+        if (shapes[i].get() == target.get()) targetIndex = i;
     }
+
+    arrow->setSourceId(sourceIndex);
+    arrow->setTargetId(targetIndex);
+
+    // 3. Добавляем в Storage как обычную фигуру
+    m_storage.add(arrow);
+
+    // 4. Обновляем интерфейс
+    m_paintArea->update();
+    updateTreeView();
+
+    QMessageBox::information(this, "Стрелка создана",
+        "Стрелка будет сохранена в файл и появится в дереве объектов");
+    
 }

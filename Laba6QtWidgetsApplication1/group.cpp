@@ -23,6 +23,7 @@ Group::Group(const QPoint& position) : BaseShape(position)
 
 void Group::draw(QPainter& painter) const
 {
+    //рисует фон группы
     painter.setBrush(QBrush(fillColor));
     painter.setPen(Qt::NoPen);
     painter.drawRect(getBounRect());
@@ -49,6 +50,7 @@ void Group::draw(QPainter& painter) const
     }
 }
 
+//вычисляем ограничивающий прямоугольник группы
 QRect Group::getBounRect() const
 {
     if (shapes.empty())
@@ -66,6 +68,7 @@ QRect Group::getBounRect() const
     return bounds;
 }
 
+//проверяем, попадает ли точка в любую из фигур группы
 bool Group::contains(const QPoint& point) const
 {
     //проверяем попадает ли точка в любую из фигур 
@@ -73,19 +76,20 @@ bool Group::contains(const QPoint& point) const
     {
         if (shape->contains(point))
         {
-            return true;
+            return true; //точка попала в одну из фигур
         }
     }
     return false;
 }
 
+//перемещаем всю группу на указанное смещение
 void Group::move(int dx, int dy)
 {
     BaseShape::move(dx, dy);
     //перемещаем фигуры в группе
-    for (auto& shape : shapes)
+    for (auto& shape : shapes)  //shape - BaseShape
     {
-        shape->move(dx, dy);
+        shape->move(dx, dy);  //виртуальный вызов
     }
 
     //обновлем позицию группы
@@ -145,7 +149,7 @@ void Group::resize(int newWidth, int newHeight)
 
 //добавление фигур в группу
 
-void Group::addShape(std::shared_ptr<BaseShape> shape)
+void Group::addShape(std::shared_ptr<BaseShape> shape)  //параметр BaseShape
 {
     shapes.push_back(shape); //добавляем группу в вектор
     updateBounds();//обновляем границы группы
@@ -185,6 +189,8 @@ void Group::updateBounds()
     height = bounds.height();
 }
 
+//ЛР6 
+
 //сохраняем группу и все ее фигуры в файл
 void Group::save(QTextStream& out) const
 {
@@ -205,7 +211,7 @@ void Group::save(QTextStream& out) const
     } 
 }
 
-//FACTORY PATTERN ПАТТЕРН 
+
 void Group::load(QTextStream& in)
 {
     //очищаем текущие фигуры 
@@ -241,7 +247,7 @@ void Group::load(QTextStream& in)
         QStringList parts = line.split(' ', Qt::SkipEmptyParts);
         if (parts.isEmpty()) continue;
 
-        QString type = parts[0];
+        QString type = parts[0]; //тип фигуры
 
 
        //для создания фигуры
@@ -317,7 +323,7 @@ std::shared_ptr<BaseShape>Group::clone() const
     return newGroup;
 }
 
-
+//метод контроля границ группы
 void Group::adjustToBounds(const QRect& allowedArea)
 {
     // Получаем границы всей группы

@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include "ShapeFactory.h"
+#include "ArrowShape.h"
 
 //конструктор
 
@@ -97,7 +98,7 @@ void Storage::removeSelected()
 
 	shapes = notHighlightedShapes;
 	//удаляем все стрелки при удалении фигур 
-	arrows.clear();
+	//arrows.clear();
 	emit treeUpdateNeeded();
 
 }
@@ -105,7 +106,7 @@ void Storage::removeSelected()
 void Storage::clear()
 {
 	shapes.clear(); //очищаем фигуры
-	arrows.clear(); //очищаем стрелки 
+	//arrows.clear(); //очищаем стрелки 
 	emit treeUpdateNeeded(); //TreeView
 }
 
@@ -206,7 +207,7 @@ std::shared_ptr<Group> Storage::groupSelected()
 
 	}
 
-	//создаем новую группу
+	//создаем новую группу COMPOSITE
 	auto group = std::make_shared<Group>();
 
 	//добавляем все выделенные фигуры в группы
@@ -219,8 +220,10 @@ std::shared_ptr<Group> Storage::groupSelected()
 	//удаляем фигуры из основного хранилища
 	for (auto& shape : selected)
 	{
+		//находим и удаляем фигуру из основного контейнера 
 		auto it = std::remove_if(shapes.begin(), shapes.end(),
 			[shape](const std::shared_ptr<BaseShape>& s) {
+				//сравниваем указатели если это та же фигура, то удаляем
 				return s.get() == shape.get();
 			});
 		shapes.erase(it, shapes.end());
@@ -271,43 +274,223 @@ std::vector<std::shared_ptr<BaseShape>> Storage::getAllSelectedShapes() const
 		//проверяем выделена ли фигура
 		if (shape->isSelected())
 		{
-			result.push_back(shape);
+			result.push_back(shape); //добавляем выделенную фигуру
 		}
 	}
 	return result; //возвращаем вектор с выделенными фигурами
 
 }
 
+
+
+/*
 //сохранение в файл 
 bool Storage::saveToFile(const QString& filename)
 {
 	QFile file(filename); //объект файла с указанным именем
-	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) //только для записии | текстовый режим 
-		
 
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) //только для записии | текстовый режим 
 	{
 		return false;
 	}
+
 	QTextStream out(&file); //создаем поток для записи текста в файл
 
-	//сохраняем количество фигур 
+	
+	for (int i = 0; i < shapes.size(); i++)
+	{
+
+		if (shapes[i]->getType() == "Arrow")
+		{
+			if (auto arrow = std::dynamic_pointer_cast<ArrowShape>(shapes[i]))
+			{
+				// Обновляем ID объектов
+				int sourceIndex = findObjectIndex(arrow->getSource());
+				int targetIndex = findObjectIndex(arrow->getTarget());
+				arrow->setSourceId(sourceIndex);
+				arrow->setTargetId(targetIndex);
+			}
+		}
+	}
 	out << shapes.size() << "\n";
 
-	// Сохраняем каждую фигуру
-	for (const auto& shape : shapes) 
+	for (const auto& shape : shapes)
 	{
-		//используем ShapeFactory для определения типа 
-		//QString type = ShapeFactory::getShapeType(shape);
-		//сохраняем тип
-		//out << shape->getType() << "\n";
-		//out << type << "\n";
-		//вызываем виртуальный метод save()
+		if (shape->getType() == "Group")
+		{
+			if (auto group = std::dynamic_pointer_cast<Group>(shape))
+			{
+				// Сохраняем метку начала группы
+				out << "GROUP_BEGIN ";
+				out << group->getShapes().size() << "\n";
+
+				// Сохраняем саму группу (ее свойства)
+				group->save(out);
+
+				// Сохраняем фигуры внутри группы
+				auto children = group->getShapes();
+				for (const auto& child : children)
+				{
+					child->save(out);
+				}
+
+				out << "GROUP_END\n";
+				continue; // Пропускаем обычное сохранение
+			}
+		}
 		shape->save(out);
 	}
+
+
+
+
+	file.close();
+	return true;
+}
+*/
+bool Storage::saveToFile(const QString& filename)
+{
+	QFile file(filename);
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		return false;
+	}
+
+	QTextStream out(&file);
+
+	// Обновляем ID для стрелок
+	for (int i = 0; i < shapes.size(); i++)
+	{
+		if (shapes[i]->getType() == "Arrow")
+		{
+			if (auto arrow = std::dynamic_pointer_cast<ArrowShape>(shapes[i]))
+			{
+				int sourceIndex = findObjectIndex(arrow->getSource());
+				int targetIndex = findObjectIndex(arrow->getTarget());
+				arrow->setSourceId(sourceIndex);
+				arrow->setTargetId(targetIndex);
+			}
+		}
+	}
+
+	// Сохраняем количество корневых объектов
+	out << shapes.size() << "\n";
+
+	for (const auto& shape : shapes)
+	{
+		// Если это группа
+		if (shape->getType() == "Group")
+		{
+			if (auto group = std::dynamic_pointer_cast<Group>(shape))
+			{
+				// Сохраняем метку группы и количество детей
+				auto children = group->getShapes();
+				out << "GROUP " << children.size() << "\n";
+
+				// Сохраняем детей группы (НО НЕ САМУ ГРУППУ!)
+				for (const auto& child : children)
+				{
+					child->save(out);
+				}
+			}
+		}
+		else
+		{
+			// Обычная фигура (не группа)
+			shape->save(out);
+		}
+	}
+
 	file.close();
 	return true;
 }
 
+
+bool Storage::loadFromFile(const QString& filename)
+{
+	QFile file(filename);
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		return false;
+	}
+
+	QTextStream in(&file);
+	shapes.clear();
+
+	// Читаем количество объектов
+	int totalObjects;
+	in >> totalObjects;
+	in.readLine(); // Переходим на следующую строку
+
+	for (int i = 0; i < totalObjects; i++)
+	{
+		QString line = in.readLine();
+		if (line.isNull()) break;
+
+		line = line.trimmed();
+		if (line.isEmpty()) continue;
+
+		QStringList parts = line.split(' ', Qt::SkipEmptyParts);
+		if (parts.isEmpty()) continue;
+
+		QString type = parts[0];
+
+		// Если это группа
+		if (type == "GROUP")
+		{
+			// Создаем группу
+			auto group = std::make_shared<Group>();
+			int childCount = parts[1].toInt();
+
+			// Читаем детей группы
+			for (int j = 0; j < childCount; j++)
+			{
+				QString childLine = in.readLine();
+				if (childLine.isNull()) break;
+
+				childLine = childLine.trimmed();
+				if (childLine.isEmpty()) continue;
+
+				QStringList childParts = childLine.split(' ', Qt::SkipEmptyParts);
+				if (childParts.isEmpty()) continue;
+
+				QString childType = childParts[0];
+				std::shared_ptr<BaseShape> child = ShapeFactory::createShape(childType);
+
+				if (child)
+				{
+					QTextStream childStream(&childLine);
+					child->load(childStream);
+					group->addShape(child);
+				}
+			}
+
+			// Добавляем группу в хранилище
+			shapes.push_back(group);
+		}
+		else
+		{
+			// Обычная фигура
+			std::shared_ptr<BaseShape> shape = ShapeFactory::createShape(type);
+
+			if (shape)
+			{
+				QTextStream shapeStream(&line);
+				shape->load(shapeStream);
+				shapes.push_back(shape);
+			}
+		}
+	}
+
+	file.close();
+	restoreArrowConnections();
+	notifyChanges();
+	return !shapes.empty();
+}
+
+
+
+/*
 //загрузка из файла 
 bool Storage::loadFromFile(const QString& filename)
 {
@@ -322,6 +505,12 @@ bool Storage::loadFromFile(const QString& filename)
 
 	//очищаем текущие вершины
 	shapes.clear();
+
+	//временное хранение загруженных фигур 
+	//std::vector<std::shared_ptr<BaseShape>> loadedShapes;
+
+	std::vector<std::shared_ptr<BaseShape>> loadedShapes;
+	std::stack<std::shared_ptr<Group>> groupStack;
 
 	// Читаем файл построчно
 	while (!in.atEnd()) {
@@ -352,23 +541,47 @@ bool Storage::loadFromFile(const QString& filename)
 			continue;
 		}
 
-		// Для загрузки создаем поток из исходной строки
-		QTextStream shapeStream(&line);
+		if (shape)
+		{
+			// Для загрузки создаем поток из исходной строки
+			QTextStream shapeStream(&line);
 
-		// Загружаем данные в фигуру
-		shape->load(shapeStream);
+			// Загружаем данные в фигуру
+			shape->load(shapeStream);
 
-		// Добавляем фигуру в хранилище
-		shapes.push_back(shape);
+			// Добавляем фигуру в хранилище
+			//shapes.push_back(shape);
+			if (currentGroup)
+			{
+				groupChildren.push_back(shape);
+			}
+			else
+			{
+				shapes.push_back(shape);
+
+			}
+		}
+
 	}
+
+
 
 	file.close();
 
+	
+
+	restoreArrowConnections();
+
+	notifyChanges();
 	// Возвращаем true, если загрузили хотя бы одну фигуру
 	return !shapes.empty();
 }
+*/
+
+
 
 //=====ЛР7 
+/*
 void Storage::addArrow(std::shared_ptr<ArrowObserver> arrow)
 {
 	arrows.push_back(arrow);
@@ -406,4 +619,133 @@ void Storage::notifyChanges()
 	emit treeUpdateNeeded();
 	emit selectionChanged();
 
+}*/
+
+
+
+std::shared_ptr<ArrowShape> Storage::createArrow(std::shared_ptr<BaseShape> source,
+	std::shared_ptr<BaseShape> target)
+{
+	if (!source || !target || source == target)
+	{
+		return nullptr;
+	}
+
+	auto arrow = std::make_shared<ArrowShape>(source, target);
+	// Устанавливаем ID объектов для сохранения
+	int sourceIndex = findObjectIndex(source);
+	int targetIndex = findObjectIndex(target);
+	arrow->setSourceId(sourceIndex);
+	arrow->setTargetId(targetIndex);
+
+	shapes.push_back(arrow);
+	notifyChanges();
+	return arrow;
 }
+
+//ПОИСК ИНДЕКСА ОБЪЕКТА
+int Storage::findObjectIndex(std::shared_ptr<BaseShape> shape) const
+{
+	for (int i = 0; i < shapes.size(); i++)
+	{
+		if (shapes[i].get() == shape.get())
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+// Восстановление связей стрелок после загрузки
+void Storage::restoreArrowConnections()
+{
+	// Проходим по всем фигурам
+	for (auto& shape : shapes)
+	{
+		if (shape->getType() == "Arrow")
+		{
+			if (auto arrow = std::dynamic_pointer_cast<ArrowShape>(shape))
+			{
+				int sourceId = arrow->getSourceId();
+				int targetId = arrow->getTargetId();
+
+				// Восстанавливаем связь с источником
+				if (sourceId >= 0 && sourceId < shapes.size())
+				{
+					arrow->setSource(shapes[sourceId]);
+				}
+
+
+				// Восстанавливаем связь с целью
+				if (targetId >= 0 && targetId < shapes.size())
+				{
+					arrow->setTarget(shapes[targetId]);
+				}
+				if (arrow->getSource() && arrow->getTarget()) {
+					// Просто вызываем метод стрелки для обновления позиции
+					arrow->updateArrowPositionAndSize();
+				}
+			}
+		}
+	}
+}
+
+
+std::vector<std::shared_ptr<ArrowShape>> Storage::getArrows() const
+{
+	std::vector<std::shared_ptr<ArrowShape>> arrows;
+
+	for (const auto& shape : shapes)
+	{
+		if (shape->getType() == "Arrow")
+		{
+			if (auto arrow = std::dynamic_pointer_cast<ArrowShape>(shape))
+			{
+				arrows.push_back(arrow);
+			}
+		}
+	}
+
+	return arrows;
+}
+
+// Очистка выделения всех фигур
+void Storage::clearSelection()
+{
+	bool changed = false;
+	for (auto& shape : shapes)
+	{
+		if (shape->isSelected())
+		{
+			shape->setSelected(false);
+			changed = true;
+		}
+	}
+
+	if (changed)
+	{
+		notifyChanges();
+	}
+}
+
+
+// Выделение конкретной фигуры
+void Storage::selectShape(std::shared_ptr<BaseShape> shape)
+{
+	if (!shape || shape->isSelected()) return;
+
+	shape->setSelected(true);
+	notifyChanges();
+}
+
+
+// Снятие выделения с конкретной фигуры
+void Storage::deselectShape(std::shared_ptr<BaseShape> shape)
+{
+	if (!shape || !shape->isSelected()) return;
+
+	shape->setSelected(false);
+	notifyChanges();
+}
+
+

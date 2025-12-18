@@ -23,6 +23,7 @@ void PaintArea::paintEvent(QPaintEvent* event)
     // Сохраняем рабочую область (вся область виджета)
     workArea = rect();
 
+    
     // Рисуем все фигуры
     auto shapes = storage->getShapes();
     for (const auto& shape : shapes)
@@ -286,10 +287,21 @@ void PaintArea::handleResizing(int dw, int dh) {
 
 void PaintArea::drawArrows(QPainter& painter) 
 {
+    /*
     const auto& arrows = storage->getArrows();
     for (const auto& arrow : arrows) 
     {
         arrow->draw(painter);
+    }*/
+    auto shapes = storage->getShapes();
+
+    // Ищем только стрелки и рисуем их
+    for (const auto& shape : shapes)
+    {
+        if (shape->getType() == "Arrow")
+        {
+            shape->draw(painter);
+        }
     }
 }
 

@@ -165,3 +165,32 @@ void BaseShape::setCenter(const QPoint& center)
 	QPoint offset = center - position1;
 	move(offset.x(), offset.y());
 }
+void BaseShape::save(QTextStream& out) const
+{
+	out << getType() << " "
+		<< position1.x() << " "
+		<< position1.y() << " "
+		<< width << " "
+		<< height << " "
+		<< fillColor.name() << " "
+		<< Colorborder.name() << " "
+		<< (selected ? "1" : "0");
+}
+
+
+void BaseShape::load(QTextStream& in)
+{
+	QString type;
+	int x, y, w, h;
+	QString fillName, borderName;
+	int selectedFlag;
+
+	in >> type >> x >> y >> w >> h >> fillName >> borderName >> selectedFlag;
+
+	position1 = QPoint(x, y);
+	width = w;
+	height = h;
+	fillColor = QColor(fillName);
+	Colorborder = QColor(borderName);
+	selected = (selectedFlag == 1);
+}
