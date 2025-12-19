@@ -93,6 +93,8 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_paintArea, &PaintArea::ungroupRequested, this, &MainWindow::onUngroupClicked);
     connect(m_paintArea, &PaintArea::selectionChanged,
         this, &MainWindow::updateTreeView);
+    connect(m_treeWidget, &QTreeWidget::itemClicked,
+        this, &MainWindow::onTreeItemClicked);
 
     /*
     // НОВОЕ: Подключаем сигналы для создания стрелок
@@ -556,11 +558,42 @@ void MainWindow::onClearAllClicked()
 
 void MainWindow::addShapeToTree(std::shared_ptr<BaseShape> shape, QTreeWidgetItem* parent)
 {
-    if (!shape) return; //проверка на группу
+    //if (!shape) return; //проверка на группу
 
     // Создаем элемент для фигуры
     QTreeWidgetItem* item = new QTreeWidgetItem(parent);
 
+    // Устанавливаем текст
+    QString text = QString("%1").arg(shape->getType());
+
+    item->setText(0, text);
+
+    // Сохраняем указатель на фигуру
+    item->setData(0, Qt::UserRole, QVariant::fromValue(static_cast<void*>(shape.get())));
+
+
+    // Выделяем если фигура выделена
+    if (shape->isSelected())
+    {
+        item->setSelected(true);
+        //m_treeWidget->setCurrentItem(item);
+    }
+
+    if (shape->isGroup())
+    {
+        if (auto group = std::dynamic_pointer_cast<Group>(shape))
+        {
+            auto children = group->getShapes();
+            for (const auto& child : children)
+            {
+                addShapeToTree(child, item);
+            }
+        }
+    }
+}
+
+
+/*
     QString itemText;
     if (shape->getType() == "Arrow")
     {
@@ -599,7 +632,7 @@ void MainWindow::addShapeToTree(std::shared_ptr<BaseShape> shape, QTreeWidgetIte
             }
         }
     }
-}
+}*/
 
 //ЛР7 Observer для TreeView обновление
 void MainWindow::updateTreeView()
@@ -626,7 +659,7 @@ void MainWindow::updateTreeView()
 //обработка клика
 void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
 {
-    Q_UNUSED(column);
+    //Q_UNUSED(column);
 
     if (!item) return;
 
@@ -639,16 +672,29 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
 
     // Выделяем фигуру в рабочей области
     // Сначала снимаем выделение со всех
+    std::shared_ptr<BaseShape> shapePtr = nullptr;
     auto shapes = m_storage.getShapes();
-    for (const auto& s : shapes) {
-        s->setSelected(false);
+    for (const auto& s : shapes) 
+    {
+        if (s.get() == shape)
+        {
+            shapePtr = s;
+            break;
+        }
+
+        //s->setSelected(false);
     }
 
+    if (!shapePtr) return;
+
+    m_storage.clearSelection();
+
     // Выделяем выбранную фигуру, при клике выделяется фигура в рабочей области
-    shape->setSelected(true);
+    shapePtr->setSelected(true);
 
     // Обновляем рабочую область
     m_paintArea->update();
+    //updateTreeView();
 }
 
 void MainWindow::createArrow(std::shared_ptr<BaseShape> source, std::shared_ptr<BaseShape> target)
@@ -657,6 +703,7 @@ void MainWindow::createArrow(std::shared_ptr<BaseShape> source, std::shared_ptr<
         QMessageBox::warning(this, "Ошибка", "Невозможно создать стрелку");
         return;
     }
+
     auto arrow = std::make_shared<ArrowShape>(source, target);
 
     auto shapes = m_storage.getShapes();

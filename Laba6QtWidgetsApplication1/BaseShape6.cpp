@@ -160,10 +160,16 @@ QPoint BaseShape::getCenter() const {
 
 void BaseShape::setCenter(const QPoint& center) 
 {
+	/*
 	QPoint currentCenter = getCenter();
 
 	QPoint offset = center - position1;
-	move(offset.x(), offset.y());
+	move(offset.x(), offset.y());*/
+	//position1 = center;
+	position1 = QPoint(center.x() - width / 2,
+		center.y() - height / 2);
+	notifyObservers();
+
 }
 void BaseShape::save(QTextStream& out) const
 {

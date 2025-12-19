@@ -11,7 +11,7 @@ class ArrowShape : public BaseShape, public Observer
 public:
     ArrowShape();
     ArrowShape(std::shared_ptr<BaseShape> source ,
-        std::shared_ptr<BaseShape> target );
+        std::shared_ptr<BaseShape> target);
 
     ~ArrowShape() override;
 
@@ -59,13 +59,16 @@ public:
     void updateArrowPositionAndSize();
 
 private:
-    std::shared_ptr<BaseShape> m_source;
-    std::shared_ptr<BaseShape> m_target;
+
+    std::shared_ptr<BaseShape> m_source; //начало стрелки
+    std::shared_ptr<BaseShape> m_target; //конец стрелки
     QPoint m_lastSourcePos;
     QColor m_arrowColor;
 
     int m_sourceId;
     int m_targetId;
+    QPointF calculateBestConnectionPoint(const QRect& bounds, const QPoint& targetPoint) const;
+
 
     QPointF calculateConnectionPoint(std::shared_ptr<BaseShape> shape, bool isSource) const;
 

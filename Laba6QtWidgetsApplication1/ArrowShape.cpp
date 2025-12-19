@@ -163,8 +163,14 @@ bool ArrowShape::contains(const QPoint& point) const
 
 void ArrowShape::move(int dx, int dy)
 {
+    /*
     Q_UNUSED(dx);
-    Q_UNUSED(dy);
+    Q_UNUSED(dy);*/
+
+    position1.setX(position1.x() + dx);
+    position1.setY(position1.y() + dy);
+    notifyObservers(); // чтобы обновить отображение
+
 }
 
 void ArrowShape::resize(int newWidth, int newHeight)
@@ -246,19 +252,59 @@ std::shared_ptr<BaseShape> ArrowShape::clone() const
 
 void ArrowShape::update()
 {
-    if (m_source && m_target) 
+
+    
+    if (m_source && m_target)
     {
+        // Текущая позиция источника
+        QPoint currentSourcePos = m_source->getCenter();
+
+        // Если источник ИЗМЕНИЛ позицию
+        if (currentSourcePos != m_lastSourcePos)
+        {
+            // Вычисляем на сколько сдвинулся источник
+            QPoint offset = currentSourcePos - m_lastSourcePos;
+            QPoint newTargetCenter = m_target->getCenter() + offset;
+
+            m_target->setCenter(newTargetCenter); // теперь move() у мишени работает
+
+
+            // Обновляем позицию стрелки
+            updatePosition();
+        }
+        // Обновляем последнюю позицию источника
+        m_lastSourcePos = currentSourcePos;
+    }
+
+
+            /*
+
+            // Двигаем ЦЕЛЬ на тот же offset
+            //QPoint currentTargetPos = m_target->getCenter();
+           // m_target->setCenter(currentTargetPos + offset);
+            m_target->move(offset.x(), offset.y()); 
+            m_target->notifyObservers();
+            // Обновляем позиции стрелки
+            updatePosition();
+            m_lastSourcePos = currentSourcePos;*/
+        
+        // Всегда обновляем последнюю позицию источника
+        //m_lastSourcePos = m_source->getCenter();
+
+        /**
         QPoint currentPos = m_source->getCenter();
         QPoint offset = currentPos - m_lastSourcePos;
 
         QPoint targetPos = m_target->getCenter();
         m_target->setCenter(targetPos + offset);
         
-        m_lastSourcePos = currentPos;
+        //m_lastSourcePos = currentPos;
         updatePosition();
-
+        m_lastSourcePos = m_source->getCenter();
+        */
     }
-}
+
+
 
 void ArrowShape::updateArrowPositionAndSize()
 {
@@ -308,16 +354,51 @@ QPointF ArrowShape::calculateConnectionPoint(std::shared_ptr<BaseShape> shape, b
     if (!shape) return QPointF();
 
     QRect bounds = shape->getBounRect();
+    QPoint sourceCenter = m_source->getCenter();
+    QPoint targetCenter = m_target->getCenter();
+
     if (isSource)
     {
+        return calculateBestConnectionPoint(bounds, targetCenter);
         //соединяем с правой стороны источника
-        return QPointF(bounds.right(), bounds.center().y());
+
+       // return QPointF(bounds.right(), bounds.center().y());
     }
     else
     {
-        return QPointF(bounds.left(), bounds.center().y());
+        return calculateBestConnectionPoint(bounds, sourceCenter);
+
+        //return QPointF(bounds.left(), bounds.center().y());
     }
 }
+
+
+QPointF ArrowShape::calculateBestConnectionPoint(const QRect& bounds, const QPoint& targetPoint) const
+{
+    QPoint center = bounds.center();
+
+    // Вектор от центра фигуры к цели
+    QPointF direction(targetPoint - center);
+    qreal length = qSqrt(direction.x() * direction.x() + direction.y() * direction.y());
+
+    if (length > 0)
+    {
+        direction /= length;
+
+        // Находим точку пересечения с границей прямоугольника
+        // Упрощенный расчет - ищем ближайшую сторону
+        qreal scaleX = bounds.width() / 2.0 / qAbs(direction.x());
+        qreal scaleY = bounds.height() / 2.0 / qAbs(direction.y());
+        qreal scale = qMin(scaleX, scaleY);
+
+        return QPointF(center.x() + direction.x() * scale,
+            center.y() + direction.y() * scale);
+    }
+
+    // Если вектора нет, возвращаем правый центр
+    return QPointF(bounds.right(), center.y());
+}
+
 
 void ArrowShape::updatePosition()
 {
@@ -330,16 +411,17 @@ void ArrowShape::updatePosition()
         QPointF startPoint = calculateConnectionPoint(m_source, true);
         QPointF endPoint = calculateConnectionPoint(m_target, false);
 
+        //позиция стрелки - середина между точками
         position1 = QPoint((startPoint.x() + endPoint.x()) / 2,
             (startPoint.y() +endPoint.y()) / 2);
 
         // Размеры стрелки - расстояние между точками плюс отступы для стрелки
-            width = (int)qAbs(endPoint.x() - startPoint.x()) + 40; // +20 с каждой стороны
-        height = (int)qAbs(endPoint.y() - startPoint.y()) + 40;
+            width = (int)qAbs(endPoint.x() - startPoint.x()) + 20; // +20 с каждой стороны
+        height = (int)qAbs(endPoint.y() - startPoint.y()) + 20;
 
-        if (m_source) {
+        /*if (m_source) {
             m_lastSourcePos = m_source->getCenter();
-        }
+        }*/
 
         /*
         // Обновляем размеры

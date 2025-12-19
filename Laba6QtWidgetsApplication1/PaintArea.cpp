@@ -94,7 +94,8 @@ void  PaintArea::mousePressEvent(QMouseEvent* event)
 
                 // Создаем стрелку
                 auto arrow = storage->createArrow(m_selectedForArrow, shape);
-                if (arrow) {
+                if (arrow)
+                {
                     QMessageBox::information(this, "Стрелка создана",
                         QString("Создана стрелка: %1 → %2\n"
                             "При перемещении первого объекта второй будет следовать за ним.")
@@ -109,14 +110,15 @@ void  PaintArea::mousePressEvent(QMouseEvent* event)
                 return;
 
             }
+        }
         
-    }
     //QPoint clicksPos = event->pos();
     // Если кликнули не по фигуре - отменяем создание
+        
     m_isCreatingArrow = false;
     m_selectedForArrow = nullptr;
     update();
-    return;  // Важно вернуться, чтобы не выполнять код ниже
+    //return;  // Важно вернуться, чтобы не выполнять код ниже
     }
 
     //метод вызываем при нажатии клавиши мыши выделение фигур
@@ -161,7 +163,8 @@ void  PaintArea::mousePressEvent(QMouseEvent* event)
         //если не нашли объект 
         if (!found && !ctrlPressed)
         {
-            for (int i = 0; i < count; ++i) {
+            for (int i = 0; i < count; ++i) 
+            {
                 auto shape = storage->getObject(i);
                 shape->setSelected(false);
             }

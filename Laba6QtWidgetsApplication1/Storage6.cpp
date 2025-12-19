@@ -631,6 +631,7 @@ std::shared_ptr<ArrowShape> Storage::createArrow(std::shared_ptr<BaseShape> sour
 		return nullptr;
 	}
 
+	//создаем объект ArrowShape
 	auto arrow = std::make_shared<ArrowShape>(source, target);
 	// Устанавливаем ID объектов для сохранения
 	int sourceIndex = findObjectIndex(source);
@@ -638,12 +639,13 @@ std::shared_ptr<ArrowShape> Storage::createArrow(std::shared_ptr<BaseShape> sour
 	arrow->setSourceId(sourceIndex);
 	arrow->setTargetId(targetIndex);
 
+	//добавлем в контейнер
 	shapes.push_back(arrow);
 	notifyChanges();
 	return arrow;
 }
 
-//ПОИСК ИНДЕКСА ОБЪЕКТА
+//Поиск индекса объекта
 int Storage::findObjectIndex(std::shared_ptr<BaseShape> shape) const
 {
 	for (int i = 0; i < shapes.size(); i++)
